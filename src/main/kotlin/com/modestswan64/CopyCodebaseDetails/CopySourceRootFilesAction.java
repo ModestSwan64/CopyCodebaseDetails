@@ -8,15 +8,14 @@ import com.intellij.openapi.ui.Messages;
 
 import java.awt.datatransfer.StringSelection;
 
-public class CopyCurrentFolderFilesAction extends AnAction {
-
+public class CopySourceRootFilesAction extends AnAction {
     @Override
     public void actionPerformed(AnActionEvent e) {
         Project project = e.getProject();
         if (project == null) return;
 
-        String result = CopyUtils.collectSiblingFiles(project);
+        String result = CopyUtils.collectSourceRootFiles(project);
         CopyPasteManager.getInstance().setContents(new StringSelection(result));
-        Messages.showInfoMessage("Current folder's files copied to clipboard.", "Success");
+        Messages.showInfoMessage("Source root files copied to clipboard.", "Success");
     }
 }

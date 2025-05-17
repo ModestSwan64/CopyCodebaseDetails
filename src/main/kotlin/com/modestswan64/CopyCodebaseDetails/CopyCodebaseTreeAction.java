@@ -9,7 +9,6 @@ import com.intellij.openapi.ui.Messages;
 import java.awt.datatransfer.StringSelection;
 
 public class CopyCodebaseTreeAction extends AnAction {
-
     @Override
     public void actionPerformed(AnActionEvent e) {
         Project project = e.getProject();
@@ -17,6 +16,6 @@ public class CopyCodebaseTreeAction extends AnAction {
 
         String result = CopyUtils.getCodebaseFolderTree(project);
         CopyPasteManager.getInstance().setContents(new StringSelection(result));
-        Messages.showInfoMessage("Codebase directory tree copied to clipboard.", "Success");
+        Messages.showInfoMessage("Codebase folder tree copied to clipboard.", "Success");
     }
 }

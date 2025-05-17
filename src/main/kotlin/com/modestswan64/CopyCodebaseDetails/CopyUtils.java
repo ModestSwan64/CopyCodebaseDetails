@@ -10,184 +10,167 @@ import com.intellij.openapi.ui.Messages;
 import com.intellij.openapi.vfs.VfsUtilCore;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.vfs.VirtualFileVisitor;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 public class CopyUtils {
 
-    private static final Map<String, String> COMMENT_PREFIX_MAP = new HashMap<>();
-
-    static {
-        COMMENT_PREFIX_MAP.put("java", "// ");
-        COMMENT_PREFIX_MAP.put("kt", "// ");
-        COMMENT_PREFIX_MAP.put("py", "# ");
-        COMMENT_PREFIX_MAP.put("js", "// ");
-        COMMENT_PREFIX_MAP.put("ts", "// ");
-        COMMENT_PREFIX_MAP.put("tsx", "// ");
-        COMMENT_PREFIX_MAP.put("jsx", "// ");
-        COMMENT_PREFIX_MAP.put("html", "<!-- ");
-        COMMENT_PREFIX_MAP.put("xml", "<!-- ");
-        COMMENT_PREFIX_MAP.put("css", "/* ");
-        COMMENT_PREFIX_MAP.put("c", "// ");
-        COMMENT_PREFIX_MAP.put("cpp", "// ");
-        COMMENT_PREFIX_MAP.put("h", "// ");
-        COMMENT_PREFIX_MAP.put("cs", "// ");
-        COMMENT_PREFIX_MAP.put("rb", "# ");
-        COMMENT_PREFIX_MAP.put("go", "// ");
-        COMMENT_PREFIX_MAP.put("rs", "// ");
-        COMMENT_PREFIX_MAP.put("sh", "# ");
-    }
+    private static final Map<String, String> COMMENT_PREFIX_MAP = Map.ofEntries(
+            Map.entry("java", "// "), Map.entry("kt", "// "), Map.entry("py", "# "),
+            Map.entry("js", "// "), Map.entry("ts", "// "), Map.entry("tsx", "// "),
+            Map.entry("jsx", "// "), Map.entry("html", "<!-- "), Map.entry("xml", "<!-- "),
+            Map.entry("css", "/* "), Map.entry("c", "// "), Map.entry("cpp", "// "),
+            Map.entry("h", "// "), Map.entry("cs", "// "), Map.entry("rb", "# "),
+            Map.entry("go", "// "), Map.entry("rs", "// "), Map.entry("sh", "# ")
+    );
 
     public static String copyEntireCodebase(Project project) {
-
-        VirtualFile baseDir = project.getBasePath() != null
-                ? VfsUtilCore.findRelativeFile(project.getBasePath(), null)
-                : null;
-
+        VirtualFile baseDir = VfsUtilCore.findRelativeFile(Objects.requireNonNull(project.getBasePath()), null);
         if (baseDir == null) {
             Messages.showErrorDialog(project, "Project base directory not found.", "Copy Failed");
             return "";
         }
 
         StringBuilder result = new StringBuilder();
-
-        ProjectFileIndex fileIndex = ProjectFileIndex.getInstance(project);
-        FileTypeManager fileTypeManager = FileTypeManager.getInstance();
+        ProjectFileIndex index = ProjectFileIndex.getInstance(project);
+        FileTypeManager ftm = FileTypeManager.getInstance();
 
         VfsUtilCore.visitChildrenRecursively(baseDir, new VirtualFileVisitor<>() {
-            @Override
-            public boolean visitFile(VirtualFile file) {
-                if (!file.isDirectory()
-                        && fileIndex.isInSource(file)
-                        && !fileTypeManager.isFileIgnored(file)) {
-                    try {
-                        String relativePath = VfsUtilCore.getRelativePath(file, baseDir, '/');
-                        if (relativePath != null) {
-                            String content = new String(file.contentsToByteArray(), StandardCharsets.UTF_8);
-
-                            String comment = getCommentSyntax(file.getExtension(), relativePath);
-
-                            result.append(comment)
-                                    .append("\n")
-                                    .append(content)
-                                    .append("\n\n");
-                        }
-                    } catch (IOException ex) {
-                        ex.printStackTrace();
-                    }
-                }
+            public boolean visitFile(@NotNull VirtualFile file) {
+                if (!file.isDirectory() && index.isInSource(file) && !ftm.isFileIgnored(file))
+                    appendFileContent(file, baseDir, result);
                 return true;
             }
         });
+
         return result.toString();
     }
 
     public static String collectActiveFile(Project project) {
-        FileEditorManager fileEditorManager = FileEditorManager.getInstance(project);
-        Editor editor = fileEditorManager.getSelectedTextEditor();
-
+        Editor editor = FileEditorManager.getInstance(project).getSelectedTextEditor();
         if (editor == null) return "";
-
         VirtualFile file = FileDocumentManager.getInstance().getFile(editor.getDocument());
-        if (file == null) return "";
-
-        try {
-            String basePath = project.getBasePath();
-            String relativePath = VfsUtilCore.getRelativePath(file, VfsUtilCore.findRelativeFile(basePath, null), '/');
-
-            String comment = getCommentSyntax(file.getExtension(), relativePath);
-            String content = new String(file.contentsToByteArray(), StandardCharsets.UTF_8);
-
-            return comment + "\n" + content;
-
-        } catch (IOException e) {
-            e.printStackTrace();
-            return "";
-        }
+        return file == null ? "" : readFileWithComment(file, project);
     }
 
     public static String collectSiblingFiles(Project project) {
-        FileEditorManager fileEditorManager = FileEditorManager.getInstance(project);
-        Editor editor = fileEditorManager.getSelectedTextEditor();
-
+        Editor editor = FileEditorManager.getInstance(project).getSelectedTextEditor();
         if (editor == null) return "";
-
-        VirtualFile currentFile = FileDocumentManager.getInstance().getFile(editor.getDocument());
-        if (currentFile == null) return "";
-
-        VirtualFile parentDir = currentFile.getParent();
-        if (parentDir == null) return "";
+        VirtualFile file = FileDocumentManager.getInstance().getFile(editor.getDocument());
+        if (file == null || file.getParent() == null) return "";
 
         StringBuilder result = new StringBuilder();
-        String basePath = project.getBasePath();
-        VirtualFile baseDir = basePath != null ? VfsUtilCore.findRelativeFile(basePath, null) : null;
+        VirtualFile baseDir = VfsUtilCore.findRelativeFile(Objects.requireNonNull(project.getBasePath()), null);
 
-        for (VirtualFile file : parentDir.getChildren()) {
-            if (!file.isDirectory()) {
-                try {
-                    String relativePath = VfsUtilCore.getRelativePath(file, baseDir, '/');
-                    String comment = getCommentSyntax(file.getExtension(), relativePath);
-                    String content = new String(file.contentsToByteArray(), StandardCharsets.UTF_8);
+        for (VirtualFile f : file.getParent().getChildren())
+            if (!f.isDirectory()) appendFileContent(f, baseDir, result);
 
-                    result.append(comment).append("\n").append(content).append("\n\n");
+        return result.toString();
+    }
 
-                } catch (IOException e) {
-                    e.printStackTrace();
+    public static String collectSourceRootFiles(Project project) {
+        VirtualFile baseDir = VfsUtilCore.findRelativeFile(Objects.requireNonNull(project.getBasePath()), null);
+        if (baseDir == null) return "";
+
+        StringBuilder result = new StringBuilder();
+        FileTypeManager ftm = FileTypeManager.getInstance();
+
+        VfsUtilCore.visitChildrenRecursively(baseDir, new VirtualFileVisitor<>() {
+            @Override
+            public boolean visitFile(@NotNull VirtualFile file) {
+                if (!file.isDirectory() && ProjectFileIndex.getInstance(project).isInSource(file) && !ftm.isFileIgnored(file)) {
+                    appendFileContent(file, baseDir, result);
                 }
+                return true;
             }
-        }
+        });
 
         return result.toString();
     }
 
     public static String getCodebaseFolderTree(Project project) {
-        String basePath = project.getBasePath();
-        if (basePath == null) return "";
-
-        VirtualFile baseDir = VfsUtilCore.findRelativeFile(basePath, null);
+        VirtualFile baseDir = VfsUtilCore.findRelativeFile(Objects.requireNonNull(project.getBasePath()), null);
         if (baseDir == null) return "";
 
         StringBuilder tree = new StringBuilder();
+        VfsUtilCore.visitChildrenRecursively(baseDir, new VirtualFileVisitor<>() {
+            int depth = 0;
 
-        VfsUtilCore.visitChildrenRecursively(baseDir, new VirtualFileVisitor<Object>() {
-            private int depth = 0;
-
-            @Override
-            public boolean visitFile(VirtualFile file) {
-                String indent = "  ".repeat(depth);
-                if (file.isDirectory()) {
-                    tree.append(indent).append("- ").append(file.getName()).append("/\n");
-                    depth++;
-                } else {
-                    tree.append(indent).append("-- ").append(file.getName()).append("\n");
-                }
+            public boolean visitFile(@NotNull VirtualFile file) {
+                tree.append("  ".repeat(depth))
+                        .append(file.isDirectory() ? "- " : "-- ")
+                        .append(file.getName())
+                        .append(file.isDirectory() ? "/\n" : "\n");
+                if (file.isDirectory()) depth++;
                 return true;
             }
 
-            @Override
-            public void afterChildrenVisited(VirtualFile file) {
-                if (file.isDirectory()) {
-                    depth--;
-                }
+            public void afterChildrenVisited(@NotNull VirtualFile file) {
+                if (file.isDirectory()) depth--;
             }
         });
 
         return tree.toString();
     }
 
-    private static String getCommentSyntax(String extension, String path) {
-        if (extension == null) {
-            return "// " + path;
+    public static String getSourceRootFolderTree(Project project) {
+        StringBuilder result = new StringBuilder();
+        ProjectFileIndex.getInstance(project).iterateContent(file -> {
+            if (!file.isDirectory()) {
+                VirtualFile root = ProjectFileIndex.getInstance(project).getSourceRootForFile(file);
+                if (root != null) {
+                    result.setLength(0);
+                    buildTree(root, result, 0);
+                    return false;
+                }
+            }
+            return true;
+        });
+        return result.toString();
+    }
+
+    private static void buildTree(VirtualFile dir, StringBuilder builder, int depth) {
+        builder.append("  ".repeat(depth)).append("- ").append(dir.getName()).append("/\n");
+        for (VirtualFile child : dir.getChildren()) {
+            if (child.isDirectory()) buildTree(child, builder, depth + 1);
+            else builder.append("  ".repeat(depth + 1)).append("-- ").append(child.getName()).append("\n");
         }
-        String prefix = COMMENT_PREFIX_MAP.getOrDefault(extension.toLowerCase(), "// ");
-        if (prefix.equals("<!-- ")) {
-            return prefix + path + " -->";
-        } else if (prefix.equals("/* ")) {
-            return prefix + path + " */";
+    }
+
+    private static void appendFileContent(VirtualFile file, VirtualFile baseDir, StringBuilder result) {
+        try {
+            String relPath = VfsUtilCore.getRelativePath(file, baseDir, '/');
+            if (relPath != null) {
+                result.append(getCommentSyntax(file.getExtension(), relPath))
+                        .append("\n")
+                        .append(new String(file.contentsToByteArray(), StandardCharsets.UTF_8))
+                        .append("\n\n");
+            }
+        } catch (IOException ignored) {
         }
-        return prefix + path;
+    }
+
+    private static String readFileWithComment(VirtualFile file, Project project) {
+        try {
+            String relPath = VfsUtilCore.getRelativePath(file, Objects.requireNonNull(VfsUtilCore.findRelativeFile(Objects.requireNonNull(project.getBasePath()), null)), '/');
+            return getCommentSyntax(file.getExtension(), relPath) + "\n" +
+                    new String(file.contentsToByteArray(), StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            return "";
+        }
+    }
+
+    private static String getCommentSyntax(String ext, String path) {
+        if (ext == null) return "// " + path;
+        String prefix = COMMENT_PREFIX_MAP.getOrDefault(ext.toLowerCase(), "// ");
+        return switch (prefix) {
+            case "<!-- " -> prefix + path + " -->";
+            case "/* " -> prefix + path + " */";
+            default -> prefix + path;
+        };
     }
 }

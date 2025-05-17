@@ -8,14 +8,14 @@ import com.intellij.openapi.ui.Messages;
 
 import java.awt.datatransfer.StringSelection;
 
-public class CopyEntireCodebaseAction extends AnAction {
+public class CopySiblingFilesAction extends AnAction {
     @Override
     public void actionPerformed(AnActionEvent e) {
         Project project = e.getProject();
         if (project == null) return;
 
-        String result = CopyUtils.copyEntireCodebase(project);
+        String result = CopyUtils.collectSiblingFiles(project);
         CopyPasteManager.getInstance().setContents(new StringSelection(result));
-        Messages.showInfoMessage("Entire codebase copied to clipboard.", "Success");
+        Messages.showInfoMessage("Sibling files copied to clipboard.", "Success");
     }
 }

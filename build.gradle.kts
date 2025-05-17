@@ -16,12 +16,10 @@ sourceSets["main"].java.srcDirs("src/main/kotlin")
 // Configure Gradle IntelliJ Plugin
 // Read more: https://plugins.jetbrains.com/docs/intellij/tools-gradle-intellij-plugin.html
 intellij {
-    version.set("2023.2.6")
-    type.set("IC") // Target IDE Platform
-
-    plugins.set(listOf(/* Plugin Dependencies */))
+    version.set("2023.3")
+    type.set("IC")
+    plugins.set(listOf("java"))
 }
-
 tasks {
     // Set the JVM compatibility versions
     withType<JavaCompile> {
@@ -34,7 +32,7 @@ tasks {
 
     patchPluginXml {
         sinceBuild.set("232")
-        untilBuild.set("242.*")
+        untilBuild.set("999.*") // Make compatible with all future builds
     }
 
     signPlugin {

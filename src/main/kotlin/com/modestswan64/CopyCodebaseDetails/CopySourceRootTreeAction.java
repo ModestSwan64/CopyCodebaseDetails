@@ -8,14 +8,14 @@ import com.intellij.openapi.ui.Messages;
 
 import java.awt.datatransfer.StringSelection;
 
-public class CopyEntireCodebaseAction extends AnAction {
+public class CopySourceRootTreeAction extends AnAction {
     @Override
     public void actionPerformed(AnActionEvent e) {
         Project project = e.getProject();
         if (project == null) return;
 
-        String result = CopyUtils.copyEntireCodebase(project);
+        String result = CopyUtils.getSourceRootFolderTree(project);
         CopyPasteManager.getInstance().setContents(new StringSelection(result));
-        Messages.showInfoMessage("Entire codebase copied to clipboard.", "Success");
+        Messages.showInfoMessage("Source root folder tree copied to clipboard.", "Success");
     }
 }
