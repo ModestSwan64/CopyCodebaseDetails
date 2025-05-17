@@ -1,0 +1,48 @@
+<idea-plugin>
+    <id>com.modestswan64.CopyCodebaseDetails</id>
+    <name>CopyCodebaseDetails</name>
+    <vendor>ModestSwan64</vendor>
+
+    <description>
+        <![CDATA[This plugin allows you to copy the codebase to the clipboard suitable for sharing and to be used as context for LLMs.]]>
+    </description>
+
+
+    <depends>com.intellij.modules.lang</depends>
+
+
+    <extensions defaultExtensionNs="com.intellij">
+        <toolWindow id="Copy Codebase"
+                    anchor="right"
+                    icon="/icons/copy-svgrepo-com.png"
+                    factoryClass="com.modestswan64.CopyCodebaseDetails.CopyCodebaseToolWindowFactory"
+                    secondary="true"/>
+    </extensions>
+
+    <actions>
+        <action id="CopyEntireCodebaseAction"
+                class="com.modestswan64.CopyCodebaseDetails.CopyEntireCodebaseAction"
+                text="Copy Entire Codebase"
+                description="Copies the entire codebase with relative path for each file appended before each file's contents.">
+            <add-to-group group-id="MainMenu" anchor="last"/>
+        </action>
+        <action id="CopyActiveFileAction"
+                class="com.modestswan64.CopyCodebaseDetails.CopyActiveFileAction"
+                text="Copy Active File"
+                description="Copies the active file with relative path appended before the file's content.">
+            <add-to-group group-id="MainMenu" anchor="last"/>
+        </action>
+        <action id="CopyCurrentFolderFilesAction"
+                class="com.modestswan64.CopyCodebaseDetails.CopyCurrentFolderFilesAction"
+                text="Copy Active Folder's Files"
+                description="Copies the files of the active file's folder with relative path appended before the file's content.">
+            <add-to-group group-id="MainMenu" anchor="last"/>
+        </action>
+        <action id="CopyCodebaseTreeAction"
+                class="com.modestswan64.CopyCodebaseDetails.CopyCodebaseTreeAction"
+                text="Copy Codebase Tree"
+                description="Copies the codebase's directory tree.">
+            <add-to-group group-id="MainMenu" anchor="last"/>
+        </action>
+    </actions>
+</idea-plugin>
