@@ -19,7 +19,7 @@
     <extensions defaultExtensionNs="com.intellij">
         <toolWindow id="Copy Codebase"
                     anchor="right"
-                    icon="/icons/copy-svgrepo-com.png"
+                    icon="/icons/copy-svgrepo-com.svg"
                     factoryClass="com.modestswan64.CopyCodebaseDetails.CopyToolWindowFactory"
                     secondary="true"
                     canCloseContents="false"/>
